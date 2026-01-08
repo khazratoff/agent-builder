@@ -9,4 +9,4 @@ Add new agent files here and they will be automatically discovered.
 from .file_operations_agent import FileOperationsAgent
 from .research_agent import ResearchAgent
 
-__all__ = ["FileOperationsAgent", "ResearchAgent"]
+__all__ = ["FileOperationsAgent", "ResearchAgent",]

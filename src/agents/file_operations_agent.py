@@ -62,35 +62,17 @@ class FileOperationsAgent(BaseAgent):
         return [read_file, write_file, list_files, delete_file, append_to_file]
 
     def _create_agent_executor(self):
-        """Create the agent executor with tools."""
-        from langchain.agents import initialize_agent, AgentType
-
+        """Create the agent executor with tools - simplified version."""
         tools = self.get_tools()
 
-        # Create the agent executor using initialize_agent
-        agent_executor = initialize_agent(
-            tools=tools,
-            llm=self.llm,
-            agent=AgentType.OPENAI_FUNCTIONS,
-            verbose=True,
-            handle_parsing_errors=True,
-            max_iterations=5,
-            agent_kwargs={
-                "system_message": """You are a File Operations Agent specialized in handling file system tasks.
+        # Bind tools directly to LLM
+        llm_with_tools = self.llm.bind_tools(tools)
 
-Important Guidelines:
-1. Always verify file paths before operations
-2. Provide clear feedback about what was done
-3. If an operation fails, explain why and suggest alternatives
-4. Be careful with delete operations"""
-            }
-        )
-
-        return agent_executor
+        return llm_with_tools
 
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute the file operations task.
+        Execute the file operations task with actual tool execution.
 
         Args:
             state: Current agent state containing user input
@@ -107,22 +89,74 @@ Important Guidelines:
                     "current_agent": self.name
                 }
 
-            # Create agent executor if not already created
+            # Create LLM with tools if not already created
             if self.agent_executor is None:
                 self.agent_executor = self._create_agent_executor()
 
-            # Execute the task
-            result = self.agent_executor.invoke({"input": user_input})
+            # Get tools as a dict for lookup
+            tools = {tool.name: tool for tool in self.get_tools()}
 
-            output = result.get("output", "Task completed but no output generated.")
+            # System message
+            system_msg = (
+                "You are a File Operations Agent. Use the available tools to complete the user's request. "
+                "Call the appropriate tool(s) to perform the actual file operations."
+            )
 
+            # Create messages
+            messages = [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_input}
+            ]
+
+            # Tool execution loop
+            max_iterations = 5
+            for iteration in range(max_iterations):
+                # Get LLM response with tool calls
+                response = self.agent_executor.invoke(messages)
+
+                # Check if there are tool calls
+                if not hasattr(response, 'tool_calls') or not response.tool_calls:
+                    # No more tool calls, return the final response
+                    output = response.content if response.content else "Task completed successfully."
+                    return {
+                        "agent_output": output,
+                        "current_agent": self.name,
+                        "metadata": {
+                            "agent": self.name,
+                            "iterations": iteration + 1
+                        }
+                    }
+
+                # Execute each tool call
+                messages.append(response)  # Add AI response to messages
+
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call.get("name")
+                    tool_args = tool_call.get("args", {})
+
+                    if tool_name in tools:
+                        # Execute the tool
+                        tool_result = tools[tool_name].invoke(tool_args)
+
+                        # Add tool result to messages
+                        messages.append({
+                            "role": "tool",
+                            "content": str(tool_result),
+                            "tool_call_id": tool_call.get("id"),
+                            "name": tool_name
+                        })
+                    else:
+                        messages.append({
+                            "role": "tool",
+                            "content": f"Error: Tool '{tool_name}' not found",
+                            "tool_call_id": tool_call.get("id"),
+                            "name": tool_name
+                        })
+
+            # Max iterations reached
             return {
-                "agent_output": output,
-                "current_agent": self.name,
-                "metadata": {
-                    "agent": self.name,
-                    "tools_used": [tool.name for tool in self.get_tools()]
-                }
+                "agent_output": "Task execution reached maximum iterations. Please try breaking down your request.",
+                "current_agent": self.name
             }
 
         except Exception as e:

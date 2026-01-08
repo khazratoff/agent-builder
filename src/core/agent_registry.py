@@ -26,6 +26,7 @@ class AgentRegistry:
     _instance = None
     _agents: Dict[str, BaseAgent] = {}
 
+
     def __new__(cls):
         """Ensure only one instance of the registry exists (Singleton pattern)."""
         if cls._instance is None:

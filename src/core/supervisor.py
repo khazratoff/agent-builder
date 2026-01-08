@@ -34,7 +34,6 @@ class SupervisorWorkflow:
             model: The LLM model to use for routing decisions
         """
         self.llm = ChatOpenAI(model=model, temperature=0)
-        self.registry = AgentRegistry()
         self.workflow = None
         self.app = None
 
@@ -54,7 +53,7 @@ class SupervisorWorkflow:
         user_input = state["user_input"]
 
         # Get all registered agents
-        agents = self.registry.get_all_agents()
+        agents = AgentRegistry.get_all_agents()
 
         if not agents:
             return Command(
@@ -129,7 +128,7 @@ Selected Agent:"""
         """
         def agent_node(state: AgentState) -> Command:
             """Execute the specified agent."""
-            agent = self.registry.get_agent(agent_name)
+            agent = AgentRegistry.get_agent(agent_name)
 
             if not agent:
                 return Command(
@@ -190,7 +189,7 @@ Selected Agent:"""
         workflow.add_node("route_request", self._route_request)
 
         # Add a node for each registered agent
-        agents = self.registry.get_all_agents()
+        agents = AgentRegistry.get_all_agents()
         for agent in agents:
             agent_node = self._create_agent_node(agent.name)
             workflow.add_node(agent.name, agent_node)

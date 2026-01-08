@@ -151,7 +151,8 @@ class MathAgent(BaseAgent):
 
     def _create_agent_executor(self):
         """Create the agent executor with tools."""
-        from langchain.agents import initialize_agent, AgentType
+        from langchain.agents import AgentExecutor, create_openai_functions_agent
+        from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
         tools = self.get_tools()
 

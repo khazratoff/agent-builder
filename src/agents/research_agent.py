@@ -1,7 +1,7 @@
 """
 Research Agent
 
-This agent handles research tasks including web search, content summarization,
+This agent handles research tasks including web searches, content summarization,
 information extraction, and topic analysis.
 """
 
@@ -19,8 +19,8 @@ class ResearchAgent(BaseAgent):
     """
     Agent specialized in research and information gathering.
 
-    This agent can perform web searches, summarize content, extract specific
-    information, and analyze topics. It's useful for research-related tasks.
+    This agent can perform web searches, summarize content, extract information,
+    and analyze topics. It's useful for research-related tasks.
     """
 
     def __init__(self):
@@ -38,9 +38,9 @@ class ResearchAgent(BaseAgent):
     def description(self) -> str:
         """Return the agent's description."""
         return (
-            "Specializes in research and information gathering tasks. Can perform web searches, "
-            "summarize long content, extract specific information from text, and analyze topics. "
-            "Use this agent when the user needs to find information, research a topic, or analyze content."
+            "Handles research tasks including web searches, content summarization, "
+            "information extraction, and topic analysis. Use this agent when the user "
+            "wants to research topics, find information, or analyze content."
         )
 
     @property
@@ -48,14 +48,11 @@ class ResearchAgent(BaseAgent):
         """Return the agent's capabilities."""
         return [
             "web search",
-            "internet search",
-            "find information",
-            "research topics",
-            "summarize content",
-            "extract information",
-            "analyze topics",
-            "gather data",
-            "information retrieval"
+            "content summarization",
+            "information extraction",
+            "topic analysis",
+            "research tasks",
+            "information gathering"
         ]
 
     def get_tools(self) -> List[BaseTool]:
@@ -63,37 +60,17 @@ class ResearchAgent(BaseAgent):
         return [web_search, summarize_content, extract_information, analyze_topic]
 
     def _create_agent_executor(self):
-        """Create the agent executor with tools."""
-        from langchain.agents import initialize_agent, AgentType
-
+        """Create the agent executor with tools - simplified version."""
         tools = self.get_tools()
 
-        # Create the agent executor using initialize_agent
-        agent_executor = initialize_agent(
-            tools=tools,
-            llm=self.llm,
-            agent=AgentType.OPENAI_FUNCTIONS,
-            verbose=True,
-            handle_parsing_errors=True,
-            max_iterations=5,
-            agent_kwargs={
-                "system_message": """You are a Research Agent specialized in information gathering and analysis.
+        # Bind tools directly to LLM
+        llm_with_tools = self.llm.bind_tools(tools)
 
-Important Guidelines:
-1. Use web_search to find current information online
-2. Use summarize_content to condense long texts
-3. Use extract_information to pull specific details from content
-4. Use analyze_topic for comprehensive topic analysis
-5. Provide well-structured, informative responses
-6. Cite sources when available"""
-            }
-        )
-
-        return agent_executor
+        return llm_with_tools
 
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute the research task.
+        Execute the research task with actual tool execution.
 
         Args:
             state: Current agent state containing user input
@@ -110,22 +87,74 @@ Important Guidelines:
                     "current_agent": self.name
                 }
 
-            # Create agent executor if not already created
+            # Create LLM with tools if not already created
             if self.agent_executor is None:
                 self.agent_executor = self._create_agent_executor()
 
-            # Execute the task
-            result = self.agent_executor.invoke({"input": user_input})
+            # Get tools as a dict for lookup
+            tools = {tool.name: tool for tool in self.get_tools()}
 
-            output = result.get("output", "Research completed but no output generated.")
+            # System message
+            system_msg = (
+                "You are a Research Agent. Use the available tools to research and answer the user's question. "
+                "You can use web search, content summarization, information extraction, and topic analysis."
+            )
 
+            # Create messages
+            messages = [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_input}
+            ]
+
+            # Tool execution loop
+            max_iterations = 5
+            for iteration in range(max_iterations):
+                # Get LLM response with tool calls
+                response = self.agent_executor.invoke(messages)
+
+                # Check if there are tool calls
+                if not hasattr(response, 'tool_calls') or not response.tool_calls:
+                    # No more tool calls, return the final response
+                    output = response.content if response.content else "Research completed."
+                    return {
+                        "agent_output": output,
+                        "current_agent": self.name,
+                        "metadata": {
+                            "agent": self.name,
+                            "iterations": iteration + 1
+                        }
+                    }
+
+                # Execute each tool call
+                messages.append(response)  # Add AI response to messages
+
+                for tool_call in response.tool_calls:
+                    tool_name = tool_call.get("name")
+                    tool_args = tool_call.get("args", {})
+
+                    if tool_name in tools:
+                        # Execute the tool
+                        tool_result = tools[tool_name].invoke(tool_args)
+
+                        # Add tool result to messages
+                        messages.append({
+                            "role": "tool",
+                            "content": str(tool_result),
+                            "tool_call_id": tool_call.get("id"),
+                            "name": tool_name
+                        })
+                    else:
+                        messages.append({
+                            "role": "tool",
+                            "content": f"Error: Tool '{tool_name}' not found",
+                            "tool_call_id": tool_call.get("id"),
+                            "name": tool_name
+                        })
+
+            # Max iterations reached
             return {
-                "agent_output": output,
-                "current_agent": self.name,
-                "metadata": {
-                    "agent": self.name,
-                    "tools_used": [tool.name for tool in self.get_tools()]
-                }
+                "agent_output": "Research execution reached maximum iterations. Please try breaking down your question.",
+                "current_agent": self.name
             }
 
         except Exception as e:
@@ -136,7 +165,7 @@ Important Guidelines:
 
     def can_handle(self, request: str) -> float:
         """
-        Calculate confidence score for handling a research request.
+        Calculate confidence score for handling a research-related request.
 
         Args:
             request: User's input string
@@ -145,9 +174,8 @@ Important Guidelines:
             Confidence score between 0 and 1
         """
         research_keywords = [
-            "search", "find", "research", "look up", "information about",
-            "tell me about", "what is", "who is", "analyze", "summarize",
-            "explain", "learn about", "gather", "investigate"
+            "search", "research", "find", "information", "analyze", "summarize",
+            "topic", "web", "look up", "investigate", "study"
         ]
 
         request_lower = request.lower()
@@ -157,6 +185,6 @@ Important Guidelines:
         if matches >= 2:
             return 0.9
         elif matches == 1:
-            return 0.75
+            return 0.7
         else:
             return 0.3
