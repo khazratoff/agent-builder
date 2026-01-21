@@ -7,7 +7,14 @@ with the multi-agent system.
 
 import os
 import sys
+import logging
 from dotenv import load_dotenv
+
+# Suppress INFO logs from MCP and related libraries
+logging.getLogger("mcp").setLevel(logging.WARNING)
+logging.getLogger("mcp-weather").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
 
 # Add src to Python path for imports
 sys.path.insert(0, os.path.dirname(__file__))

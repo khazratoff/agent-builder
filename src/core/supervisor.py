@@ -42,7 +42,7 @@ class SupervisorWorkflow:
         Analyze the user request and route to the appropriate agent.
 
         This node uses the LLM to decide which agent should handle the request
-        based on agent descriptions and capabilities.
+        based on agent descriptions, capabilities, and conversation history.
 
         Args:
             state: Current agent state
@@ -51,6 +51,7 @@ class SupervisorWorkflow:
             Command with routing decision
         """
         user_input = state["user_input"]
+        messages = state.get("messages", [])
 
         # Get all registered agents
         agents = AgentRegistry.get_all_agents()
@@ -73,15 +74,30 @@ class SupervisorWorkflow:
         agent_descriptions = "\n".join(agent_info)
         agent_names = [agent.name for agent in agents]
 
+        # Build conversation history context
+        conversation_context = ""
+        if len(messages) > 1:  # More than just the current message
+            conversation_context = "\n\nConversation History:\n"
+            # Show last 5 messages for context
+            recent_messages = messages[-6:-1] if len(messages) > 6 else messages[:-1]
+            for msg in recent_messages:
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                if role == "user":
+                    conversation_context += f"User: {content}\n"
+                elif role == "assistant":
+                    conversation_context += f"Assistant: {content}\n"
+
         # Create prompt for agent selection
         routing_prompt = f"""You are a supervisor that routes user requests to the most appropriate specialized agent.
 
 Available Agents:
 {agent_descriptions}
+{conversation_context}
 
-User Request: "{user_input}"
+Current User Request: "{user_input}"
 
-Based on the user's request, which agent should handle this task?
+Based on the user's current request and conversation history (if any), which agent should handle this task?
 Respond with ONLY the agent name, nothing else.
 
 Available agent names: {", ".join(agent_names)}
@@ -157,23 +173,32 @@ Selected Agent:"""
 
     def _finalize(self, state: AgentState) -> dict:
         """
-        Finalize and format the response.
+        Finalize and format the response, and save to conversation history.
 
         Args:
             state: Current agent state
 
         Returns:
-            Empty dict (state is already updated)
+            Dict with updated messages including the assistant's response
         """
         agent_output = state.get("agent_output", "No output generated.")
         current_agent = state.get("current_agent", "unknown")
+        messages = state.get("messages", [])
 
         print(f"\n✅ Task completed by {current_agent} agent")
         print(f"\n{'='*60}")
         print(f"Result:\n{agent_output}")
         print(f"{'='*60}\n")
 
-        return {}
+        # Add assistant's response to conversation history
+        messages.append({
+            "role": "assistant",
+            "content": agent_output
+        })
+
+        return {
+            "messages": messages
+        }
 
     def build(self) -> StateGraph:
         """
@@ -241,7 +266,7 @@ Selected Agent:"""
 
     def invoke(self, user_input: str, thread_id: str = "default") -> dict:
         """
-        Execute the workflow for a user request.
+        Execute the workflow for a user request with conversation memory.
 
         Args:
             user_input: The user's request/query
@@ -253,9 +278,31 @@ Selected Agent:"""
         if self.app is None:
             raise ValueError("Workflow not built yet. Call build() first.")
 
-        # Create initial state
+        # Configure thread for persistence
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # Try to get existing state from memory
+        try:
+            existing_state = self.app.get_state(config)
+            if existing_state and existing_state.values:
+                # Continue from existing state
+                messages = existing_state.values.get("messages", [])
+            else:
+                # No existing state, start fresh
+                messages = []
+        except:
+            # Memory not initialized, start fresh
+            messages = []
+
+        # Add new user message to history
+        messages.append({
+            "role": "user",
+            "content": user_input
+        })
+
+        # Create state with conversation history
         initial_state = {
-            "messages": [],
+            "messages": messages,
             "user_input": user_input,
             "current_agent": None,
             "agent_output": None,
@@ -263,9 +310,6 @@ Selected Agent:"""
             "task_complete": False,
             "metadata": {}
         }
-
-        # Configure thread for persistence
-        config = {"configurable": {"thread_id": thread_id}}
 
         # Execute the workflow
         result = self.app.invoke(initial_state, config)

@@ -82,6 +82,7 @@ class FileOperationsAgent(BaseAgent):
         """
         try:
             user_input = state.get("user_input", "")
+            conversation_history = state.get("messages", [])
 
             if not user_input:
                 return {
@@ -99,14 +100,21 @@ class FileOperationsAgent(BaseAgent):
             # System message
             system_msg = (
                 "You are a File Operations Agent. Use the available tools to complete the user's request. "
-                "Call the appropriate tool(s) to perform the actual file operations."
+                "Call the appropriate tool(s) to perform the actual file operations. "
+                "Consider the conversation history to understand the context of the user's request."
             )
 
-            # Create messages
-            messages = [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_input}
-            ]
+            # Build messages with conversation history
+            messages = [{"role": "system", "content": system_msg}]
+
+            # Add relevant conversation history (last few exchanges)
+            if len(conversation_history) > 1:
+                # Include last 6 messages for context (3 exchanges)
+                recent_history = conversation_history[-7:-1] if len(conversation_history) > 7 else conversation_history[:-1]
+                messages.extend(recent_history)
+
+            # Add current user input
+            messages.append({"role": "user", "content": user_input})
 
             # Tool execution loop
             max_iterations = 5

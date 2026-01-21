@@ -8,5 +8,6 @@ Add new agent files here and they will be automatically discovered.
 # Import all agents to trigger their registration
 from .file_operations_agent import FileOperationsAgent
 from .research_agent import ResearchAgent
+from .weather_agent import WeatherAgent
 
-__all__ = ["FileOperationsAgent", "ResearchAgent",]
+__all__ = ["FileOperationsAgent", "ResearchAgent", "WeatherAgent"]

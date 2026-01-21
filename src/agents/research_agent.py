@@ -80,6 +80,7 @@ class ResearchAgent(BaseAgent):
         """
         try:
             user_input = state.get("user_input", "")
+            conversation_history = state.get("messages", [])
 
             if not user_input:
                 return {
@@ -97,14 +98,21 @@ class ResearchAgent(BaseAgent):
             # System message
             system_msg = (
                 "You are a Research Agent. Use the available tools to research and answer the user's question. "
-                "You can use web search, content summarization, information extraction, and topic analysis."
+                "You can use web search, content summarization, information extraction, and topic analysis. "
+                "Consider the conversation history to understand the context of the user's question."
             )
 
-            # Create messages
-            messages = [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_input}
-            ]
+            # Build messages with conversation history
+            messages = [{"role": "system", "content": system_msg}]
+
+            # Add relevant conversation history (last few exchanges)
+            if len(conversation_history) > 1:
+                # Include last 6 messages for context (3 exchanges)
+                recent_history = conversation_history[-7:-1] if len(conversation_history) > 7 else conversation_history[:-1]
+                messages.extend(recent_history)
+
+            # Add current user input
+            messages.append({"role": "user", "content": user_input})
 
             # Tool execution loop
             max_iterations = 5
