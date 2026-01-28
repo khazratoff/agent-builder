@@ -24,15 +24,8 @@ class WeatherAgent(BaseAgent):
     to the mcp_weather_server (installed via pip) and uses LLM reasoning
     to decide which tools to call.
 
-    Available tools from mcp_weather_server:
-    - get_current_weather
-    - get_weather_byDateTimeRange
-    - get_weather_details
-    - get_current_datetime
-    - get_timezone_info
-    - convert_time
-    - get_air_quality
-    - get_air_quality_details
+    Tools are dynamically loaded from the MCP server on initialization,
+    so capabilities automatically reflect what the server provides.
     """
 
     def __init__(self):
@@ -49,6 +42,11 @@ class WeatherAgent(BaseAgent):
 
         self.mcp_manager = MCPClientManager(self.mcp_config)
         self.available_tools = []
+        self._capabilities_cache = None
+
+        # Load tools and capabilities from MCP server
+        self._load_mcp_tools()
+
         super().__init__()
 
     @property
@@ -69,18 +67,21 @@ class WeatherAgent(BaseAgent):
 
     @property
     def capabilities(self) -> List[str]:
-        """Return the agent's capabilities."""
-        return [
-            "get current weather",
-            "get weather forecast",
-            "get weather details",
-            "check air quality",
-            "get timezone info",
-            "convert time zones",
-            "get current date/time",
-            "weather information",
-            "climate data"
-        ]
+        """Return the agent's capabilities dynamically from MCP tools."""
+        if self._capabilities_cache:
+            return self._capabilities_cache
+
+        # Generate capabilities from available MCP tools
+        capabilities = []
+        for tool in self.available_tools:
+            tool_name = tool.get("name", "")
+            # Convert snake_case tool names to readable capabilities
+            readable = tool_name.replace("_", " ")
+            capabilities.append(readable)
+
+        # Cache the capabilities
+        self._capabilities_cache = capabilities if capabilities else ["weather information"]
+        return self._capabilities_cache
 
     def get_tools(self) -> List[Any]:
         """
@@ -100,9 +101,13 @@ class WeatherAgent(BaseAgent):
         try:
             tools = self.mcp_manager.list_tools()
             self.available_tools = tools
+            # Clear capabilities cache to force regeneration
+            self._capabilities_cache = None
+            print(f"✓ Loaded {len(tools)} tools from MCP weather server")
             return tools
         except Exception as e:
             print(f"Warning: Could not load MCP tools: {e}")
+            self.available_tools = []
             return []
 
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:

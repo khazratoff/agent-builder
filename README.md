@@ -1,254 +1,274 @@
-# Multi-Agent System Builder
+# Multi-Agent System with LangGraph
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![LangChain](https://img.shields.io/badge/LangChain-latest-green.svg)](https://langchain.com/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-latest-orange.svg)](https://langchain-ai.github.io/langgraph/)
+A flexible, OOP-based multi-agent system built with LangChain and LangGraph. This system features a supervisor that intelligently routes user requests to specialized agents, with an architecture designed for easy extensibility.
 
-A flexible, OOP-based multi-agent system built with **LangChain** and **LangGraph** for learning and building AI agent applications. Features intelligent supervisor routing, easy agent extensibility, and a clean modular architecture.
+## 🌟 Features
 
-## ✨ What You'll Learn
+- **Intelligent Routing**: Supervisor automatically selects the best agent for each task
+- **Plug-and-Play Architecture**: Add new agents without modifying core code
+- **OOP Design**: Clean, modular design with base classes and interfaces
+- **LangGraph StateGraph**: Explicit workflow control with state management
+- **Agent Registry**: Automatic agent discovery and registration
+- **Interactive CLI**: User-friendly command-line interface
+- **Comprehensive Examples**: Learn by example with working code
 
-This project demonstrates:
-- 🎯 **LangGraph StateGraph workflows** for agent orchestration
-- 🏗️ **Design patterns** (Registry, Strategy, Command, Factory)
-- 🔌 **Plug-and-play architecture** for adding agents
-- 🤖 **Multi-agent coordination** with supervisor pattern
-- 📚 **Production-ready code structure** and best practices
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                          User Input                         │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Supervisor (LangGraph)                   │
+│  • Analyzes request                                         │
+│  • Queries agent registry                                   │
+│  • Routes to appropriate agent                              │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│   Research   │  │    File      │  │  Your Custom │
+│    Agent     │  │  Operations  │  │    Agent     │
+│              │  │    Agent     │  │              │
+│ • Web search │  │ • Read files │  │ • Custom     │
+│ • Summarize  │  │ • Write files│  │   tools      │
+│ • Analyze    │  │ • List files │  │ • Custom     │
+│              │  │              │  │   logic      │
+└──────────────┘  └──────────────┘  └──────────────┘
+```
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Prerequisites
 
-```bash
-pip install -r requirements.txt
-```
+- Python 3.8 or higher
+- OpenAI API key
 
-### 2. Configure Environment
+### Installation
 
-```bash
-# Copy the example environment file
-cp .env.example .env
+1. **Clone or navigate to the repository**:
+   ```bash
+   cd agent-builder
+   ```
 
-# Add your OpenAI API key to .env
-OPENAI_API_KEY=your_key_here
-```
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 3. Run the System
+3. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your OpenAI API key
+   ```
 
-```bash
-python src/main.py
-```
+4. **Run the system**:
+   ```bash
+   python src/main.py
+   ```
 
-### 4. Try It Out
+## 📖 Usage
+
+### Interactive Mode
+
+Once the system starts, you can interact with it naturally:
 
 ```
 You: Search for information about LangGraph
+
 🎯 Supervisor selected: research
 ⚙️  Executing research agent...
-[Results appear...]
+[Agent performs web search and returns results]
 
-You: Save that to a file called langgraph_notes.txt
+You: Save the summary to a file called langgraph_info.txt
+
 🎯 Supervisor selected: file_operations
 ⚙️  Executing file_operations agent...
-✅ File saved successfully!
+[Agent saves the file]
 ```
 
-## 🏛️ Architecture
+### Available Commands
 
-The system has a clean three-layer architecture:
-
-```
-User Interface (CLI)
-        ↓
-Supervisor (LangGraph StateGraph)
-        ↓
-Agents (File Operations, Research, Custom...)
-        ↓
-Tools (Web search, File I/O, etc.)
-```
-
-### Key Components
-
-- **BaseAgent**: Abstract base class all agents inherit from
-- **AgentRegistry**: Singleton managing agent discovery
-- **Supervisor**: LangGraph workflow that routes requests
-- **Tools**: Reusable @tool decorated functions
+- `/help` - Show help information
+- `/agents` - List all registered agents
+- `/clear` - Clear the screen
+- `/exit` - Exit the application
 
 ## 🤖 Built-in Agents
 
-### Research Agent
-- Web search using DuckDuckGo
-- Content summarization
-- Information extraction
-- Topic analysis
+### 1. Research Agent
+**Capabilities**: Web search, content summarization, information extraction, topic analysis
 
-### File Operations Agent
-- Read and write files
-- List directory contents
-- Delete files
-- Append to files
+**Example requests**:
+- "Search for the latest LangChain documentation"
+- "Summarize this article: [paste content]"
+- "What is the definition of multi-agent systems?"
 
-## ➕ Adding Your Own Agent
+### 2. File Operations Agent
+**Capabilities**: Read, write, list, delete, and append to files
 
-It's incredibly easy! Just 3 steps:
+**Example requests**:
+- "Create a file called notes.txt with 'Hello World'"
+- "Read the contents of data/config.json"
+- "List all files in the current directory"
 
-### 1. Create Your Agent
+## ➕ Adding Custom Agents
+
+Adding a new agent is simple! Follow these steps:
+
+### Step 1: Create Your Agent Class
 
 ```python
+from typing import List, Dict, Any
+from langchain.tools import tool, BaseTool
 from src.core.base_agent import BaseAgent
 from src.core.agent_registry import AgentRegistry
 
-@AgentRegistry.register  # This decorator does the magic!
-class WeatherAgent(BaseAgent):
+# Define your tools
+@tool
+def my_custom_tool(input_data: str) -> str:
+    """Your tool description."""
+    # Tool implementation
+    return "result"
+
+# Create your agent
+@AgentRegistry.register  # This registers the agent automatically!
+class MyCustomAgent(BaseAgent):
+
     @property
     def name(self) -> str:
-        return "weather"
+        return "my_custom_agent"
 
     @property
     def description(self) -> str:
-        return "Provides weather information and forecasts"
+        return "Description of what your agent does"
 
     @property
     def capabilities(self) -> List[str]:
-        return ["weather", "forecast", "temperature"]
+        return ["capability1", "capability2"]
 
     def get_tools(self) -> List[BaseTool]:
-        return [get_weather, get_forecast]
+        return [my_custom_tool]
 
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        # Your implementation
-        return {"agent_output": "Weather result"}
+        # Your execution logic here
+        user_input = state.get("user_input", "")
+        # Process and return result
+        return {
+            "agent_output": "Your result",
+            "current_agent": self.name
+        }
 ```
 
-### 2. Register It
+### Step 2: Import Your Agent
 
-Add to `src/agents/__init__.py`:
+Add your agent file to `src/agents/` and import it in `src/agents/__init__.py`:
 
 ```python
-from src.agents.weather_agent import WeatherAgent
+from src.agents.my_custom_agent import MyCustomAgent
 ```
 
-### 3. Done!
+### Step 3: Run the System
 
-Your agent is now automatically available. The supervisor will route weather-related requests to it!
+That's it! Your agent is now automatically available in the system. The supervisor will route appropriate requests to it.
 
-## 📚 Documentation
-
-- **[docs/README.md](docs/README.md)** - Comprehensive guide with architecture overview
-- **[docs/TUTORIAL.md](docs/TUTORIAL.md)** - Step-by-step tutorial for building custom agents
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Deep dive into system design
-- **[examples/](examples/)** - Working code examples
+See `examples/add_custom_agent.py` for a complete working example.
 
 ## 📁 Project Structure
 
 ```
 agent-builder/
 ├── src/
-│   ├── core/              # Framework (base classes, registry, supervisor)
-│   ├── agents/            # Agent implementations
-│   ├── tools/             # Reusable tools
-│   └── main.py            # CLI application
-├── docs/                  # Documentation
-├── examples/              # Example code
-├── requirements.txt       # Dependencies
-└── .env.example          # Environment template
+│   ├── core/                      # Core framework
+│   │   ├── base_agent.py          # BaseAgent abstract class
+│   │   ├── agent_registry.py      # Agent registration system
+│   │   ├── state.py               # State schema
+│   │   └── supervisor.py          # LangGraph supervisor
+│   ├── agents/                    # Agent implementations
+│   │   ├── file_operations_agent.py
+│   │   └── research_agent.py
+│   ├── tools/                     # Reusable tools
+│   │   ├── file_tools.py
+│   │   └── research_tools.py
+│   └── main.py                    # Application entry point
+├── docs/                          # Documentation
+│   ├── README.md                  # This file
+│   ├── TUTORIAL.md                # Step-by-step tutorial
+│   └── ARCHITECTURE.md            # Architecture details
+├── examples/                      # Examples
+│   └── add_custom_agent.py        # Custom agent example
+├── requirements.txt               # Dependencies
+├── .env.example                   # Environment template
+└── .gitignore                     # Git ignore rules
 ```
 
-## 🎓 Learning Path
+## 🎓 Learning Resources
 
-1. **Start Here**: Run the system and try different requests
-2. **Understand**: Read [docs/TUTORIAL.md](docs/TUTORIAL.md) to understand the architecture
-3. **Explore**: Look at the built-in agents in `src/agents/`
-4. **Build**: Follow [examples/add_custom_agent.py](examples/add_custom_agent.py) to create your own agent
-5. **Master**: Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for advanced patterns
+- **[TUTORIAL.md](TUTORIAL.md)** - Detailed step-by-step guide for building custom agents
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Deep dive into the system architecture
+- **[examples/](../examples/)** - Working code examples
 
-## 🛠️ Tech Stack
+## 🔧 Configuration
 
-- **[LangChain](https://langchain.com/)** - Agent framework and tools
-- **[LangGraph](https://langchain-ai.github.io/langgraph/)** - State graph workflows
-- **[OpenAI GPT-4](https://openai.com/)** - LLM for reasoning and routing
-- **Python 3.8+** - Implementation language
+### Environment Variables
 
-## 🎯 Use Cases
+- `OPENAI_API_KEY` - Required for LLM operations
+- `TAVILY_API_KEY` - Optional, for enhanced web search
 
-This architecture is perfect for:
-- ✅ Learning agent programming concepts
-- ✅ Building multi-agent applications
-- ✅ Prototyping AI agent systems
-- ✅ Understanding LangGraph workflows
-- ✅ Experimenting with agent coordination
+### Model Selection
 
-## 🔧 Advanced Features
+By default, the system uses `gpt-4o`. You can change this in:
+- `src/core/supervisor.py` - For supervisor routing
+- Individual agent files - For agent execution
 
-- **Dynamic Routing**: Supervisor intelligently selects agents based on request
-- **State Management**: LangGraph state flows through the workflow
-- **Memory**: MemorySaver checkpointer for conversation persistence
-- **Extensibility**: Multiple extension points (agents, tools, routing)
-- **Type Safety**: TypedDict state and abstract base classes
+## 🛠️ Development
 
-## 🤝 Contributing Ideas
+### Running Tests
 
-Want to extend the system? Try adding:
-- 📧 Email agent (send, read, manage emails)
-- 🗄️ Database agent (query, insert, update data)
-- 🌐 API agent (call external APIs)
-- 📊 Data analysis agent (pandas, visualization)
-- 📅 Calendar agent (schedule, reminders)
+```bash
+# Test individual agents
+python -m src.agents.research_agent
 
-## 📖 Example Output
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║          🤖 Multi-Agent System with LangGraph 🤖             ║
-║          A Flexible, OOP-Based Agent Architecture           ║
-╚══════════════════════════════════════════════════════════════╝
-
-🔧 Initializing multi-agent system...
-✓ Registered agent: file_operations
-✓ Registered agent: research
-✓ Supervisor workflow built with 2 agents
-
-✅ System ready! Type /help for commands or enter your request.
-
-You: What is LangGraph?
-
-============================================================
-🎯 Supervisor selected: research
-⚙️  Executing research agent...
-
-✅ Task completed by research agent
-
-============================================================
-Result:
-LangGraph is a library for building stateful, multi-actor
-applications with LLMs. It extends LangChain with the ability
-to create cyclical graphs for complex agent workflows...
-============================================================
+# Test the custom agent example
+python examples/add_custom_agent.py
 ```
 
-## 🐛 Troubleshooting
+### Debugging
 
-**Agent not being selected?**
-- Check the agent's `description` property
-- Verify `capabilities` include relevant keywords
-- Test the `can_handle()` method
+Set `verbose=True` in agent executors to see detailed execution logs.
 
-**Import errors?**
-- Ensure all dependencies are installed: `pip install -r requirements.txt`
-- Check that you're running from the project root
+## 🤝 Contributing
 
-**OpenAI API errors?**
-- Verify your API key is set in `.env`
-- Check you have credits in your OpenAI account
+Contributions are welcome! Some ideas:
 
-## 📄 License
+- Add new agents (Email, Database, API, etc.)
+- Enhance existing tools
+- Improve routing logic
+- Add tests
+- Improve documentation
 
-MIT License - Feel free to use for learning and building!
+## 📝 License
+
+This project is for educational purposes. Feel free to use and modify as needed.
 
 ## 🙏 Acknowledgments
 
-This project is built for educational purposes to demonstrate modern AI agent architecture patterns using LangChain and LangGraph.
+Built with:
+- [LangChain](https://langchain.com/) - Framework for LLM applications
+- [LangGraph](https://langchain-ai.github.io/langgraph/) - Graph-based workflows
+- [OpenAI](https://openai.com/) - LLM provider
+
+## 📧 Support
+
+For questions or issues:
+1. Check the [TUTORIAL.md](TUTORIAL.md) for detailed guidance
+2. Review [examples/](../examples/) for working code
+3. Consult [ARCHITECTURE.md](ARCHITECTURE.md) for design details
 
 ---
 
-**Ready to build your own agents? Start with the [Tutorial](docs/TUTORIAL.md)! 🚀**
+**Happy agent building! 🤖**
