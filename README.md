@@ -1,274 +1,206 @@
 # Multi-Agent System with LangGraph
 
-A flexible, OOP-based multi-agent system built with LangChain and LangGraph. This system features a supervisor that intelligently routes user requests to specialized agents, with an architecture designed for easy extensibility.
+A flexible, modular multi-agent system built with LangChain and LangGraph. Features intelligent agent routing, conversation memory, MCP server integration, and a modern web interface with real-time streaming.
 
-## 🌟 Features
+## Architecture
 
-- **Intelligent Routing**: Supervisor automatically selects the best agent for each task
-- **Plug-and-Play Architecture**: Add new agents without modifying core code
-- **OOP Design**: Clean, modular design with base classes and interfaces
-- **LangGraph StateGraph**: Explicit workflow control with state management
-- **Agent Registry**: Automatic agent discovery and registration
-- **Interactive CLI**: User-friendly command-line interface
-- **Comprehensive Examples**: Learn by example with working code
-
-## 🏗️ Architecture
+The system follows a supervisor-agent pattern where a central supervisor routes requests to specialized agents:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                          User Input                         │
-└────────────────────────┬────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                         Frontend (Web UI)                    │
+│                    • Real-time streaming chat                │
+│                    • Markdown rendering                      │
+│                    • Agent status indicators                 │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ HTTP/Streaming
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                  FastAPI Backend Server                      │
+│             • RESTful API endpoints                          │
+│             • Plain text streaming                           │
+│             • CORS enabled                                   │
+└────────────────────────┬─────────────────────────────────────┘
                          │
                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Supervisor (LangGraph)                   │
-│  • Analyzes request                                         │
-│  • Queries agent registry                                   │
-│  • Routes to appropriate agent                              │
-└────────────────────────┬────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                  Supervisor (LangGraph)                      │
+│        • Analyzes user requests                              │
+│        • Routes to appropriate agent                         │
+│        • Maintains conversation memory                       │
+│        • Returns streaming responses                         │
+└────────────────────────┬─────────────────────────────────────┘
                          │
         ┌────────────────┼────────────────┐
         │                │                │
         ▼                ▼                ▼
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Research   │  │    File      │  │  Your Custom │
-│    Agent     │  │  Operations  │  │    Agent     │
-│              │  │    Agent     │  │              │
-│ • Web search │  │ • Read files │  │ • Custom     │
-│ • Summarize  │  │ • Write files│  │   tools      │
-│ • Analyze    │  │ • List files │  │ • Custom     │
-│              │  │              │  │   logic      │
+│    File      │  │   Research   │  │   Weather    │
+│ Operations   │  │    Agent     │  │    Agent     │
+│              │  │              │  │              │
+│ • Read files │  │ • Web search │  │ • MCP Server │
+│ • Write files│  │ • Summarize  │  │ • Dynamic    │
+│ • List dirs  │  │ • Analyze    │  │   tools      │
+│ • Tool exec  │  │ • DuckDuckGo │  │ • Weather    │
 └──────────────┘  └──────────────┘  └──────────────┘
+                                            │
+                                            ▼
+                                    ┌──────────────┐
+                                    │ MCP Weather  │
+                                    │    Server    │
+                                    │ (External)   │
+                                    └──────────────┘
 ```
 
-## 🚀 Quick Start
+### Key Components:
+
+- **Frontend**: Single-page application with streaming chat interface
+- **Backend**: FastAPI server with streaming endpoints
+- **Supervisor**: LangGraph workflow for intelligent routing
+- **Agents**: Specialized agents with unique capabilities
+- **MCP Integration**: External tool servers via Model Context Protocol
+- **Agent Registry**: Automatic agent discovery and registration
+
+## Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8+
 - OpenAI API key
+- Modern web browser
 
-### Installation
+### Setup
 
-1. **Clone or navigate to the repository**:
-   ```bash
-   cd agent-builder
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your OpenAI API key
-   ```
-
-4. **Run the system**:
-   ```bash
-   python src/main.py
-   ```
-
-## 📖 Usage
-
-### Interactive Mode
-
-Once the system starts, you can interact with it naturally:
-
-```
-You: Search for information about LangGraph
-
-🎯 Supervisor selected: research
-⚙️  Executing research agent...
-[Agent performs web search and returns results]
-
-You: Save the summary to a file called langgraph_info.txt
-
-🎯 Supervisor selected: file_operations
-⚙️  Executing file_operations agent...
-[Agent saves the file]
+1. **Install dependencies**:
+```bash
+pip install -r requirements.txt
 ```
 
-### Available Commands
+2. **Configure environment**:
+Create a `.env` file in the root directory:
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
 
-- `/help` - Show help information
-- `/agents` - List all registered agents
-- `/clear` - Clear the screen
-- `/exit` - Exit the application
+3. **Install MCP Weather Server** (optional, for weather agent):
+```bash
+pip install mcp-weather
+```
 
-## 🤖 Built-in Agents
+## Running the System
 
-### 1. Research Agent
-**Capabilities**: Web search, content summarization, information extraction, topic analysis
+### Backend Server
 
-**Example requests**:
-- "Search for the latest LangChain documentation"
-- "Summarize this article: [paste content]"
-- "What is the definition of multi-agent systems?"
+Start the FastAPI backend server:
 
-### 2. File Operations Agent
-**Capabilities**: Read, write, list, delete, and append to files
+```bash
+cd src
+python api_server.py
+```
 
-**Example requests**:
-- "Create a file called notes.txt with 'Hello World'"
-- "Read the contents of data/config.json"
+The server will start on `http://127.0.0.1:8000`
+
+**Server endpoints:**
+- `GET /health` - Health check
+- `GET /agents` - List all registered agents
+- `POST /chat` - Non-streaming chat endpoint
+- `POST /stream` - Streaming chat endpoint (recommended)
+
+### Frontend
+
+Open the frontend in your browser:
+
+```bash
+open frontend/index.html
+```
+
+Or simply double-click `frontend/index.html` in your file browser.
+
+The frontend will automatically connect to the backend at `http://127.0.0.1:8000`
+
+### CLI Mode (Alternative)
+
+For command-line usage without the web interface:
+
+```bash
+python src/main.py
+```
+
+## Usage
+
+Once both backend and frontend are running:
+
+1. Open `frontend/index.html` in your browser
+2. Type your message in the input box
+3. Watch the response stream in real-time
+4. The active agent will be highlighted in the right sidebar
+
+**Example queries:**
+- "What's the weather in London?"
 - "List all files in the current directory"
+- "Search for information about LangGraph"
+- "Create a file called notes.txt with hello world"
 
-## ➕ Adding Custom Agents
-
-Adding a new agent is simple! Follow these steps:
-
-### Step 1: Create Your Agent Class
-
-```python
-from typing import List, Dict, Any
-from langchain.tools import tool, BaseTool
-from src.core.base_agent import BaseAgent
-from src.core.agent_registry import AgentRegistry
-
-# Define your tools
-@tool
-def my_custom_tool(input_data: str) -> str:
-    """Your tool description."""
-    # Tool implementation
-    return "result"
-
-# Create your agent
-@AgentRegistry.register  # This registers the agent automatically!
-class MyCustomAgent(BaseAgent):
-
-    @property
-    def name(self) -> str:
-        return "my_custom_agent"
-
-    @property
-    def description(self) -> str:
-        return "Description of what your agent does"
-
-    @property
-    def capabilities(self) -> List[str]:
-        return ["capability1", "capability2"]
-
-    def get_tools(self) -> List[BaseTool]:
-        return [my_custom_tool]
-
-    def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        # Your execution logic here
-        user_input = state.get("user_input", "")
-        # Process and return result
-        return {
-            "agent_output": "Your result",
-            "current_agent": self.name
-        }
-```
-
-### Step 2: Import Your Agent
-
-Add your agent file to `src/agents/` and import it in `src/agents/__init__.py`:
-
-```python
-from src.agents.my_custom_agent import MyCustomAgent
-```
-
-### Step 3: Run the System
-
-That's it! Your agent is now automatically available in the system. The supervisor will route appropriate requests to it.
-
-See `examples/add_custom_agent.py` for a complete working example.
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 agent-builder/
 ├── src/
-│   ├── core/                      # Core framework
-│   │   ├── base_agent.py          # BaseAgent abstract class
-│   │   ├── agent_registry.py      # Agent registration system
-│   │   ├── state.py               # State schema
-│   │   └── supervisor.py          # LangGraph supervisor
-│   ├── agents/                    # Agent implementations
+│   ├── core/                       # Core framework
+│   │   ├── base_agent.py           # BaseAgent abstract class
+│   │   ├── agent_registry.py       # Agent registration system
+│   │   ├── state.py                # State schema with conversation memory
+│   │   ├── supervisor.py           # LangGraph supervisor
+│   │   └── mcp_client.py           # MCP client for external tools
+│   ├── agents/                     # Agent implementations
 │   │   ├── file_operations_agent.py
-│   │   └── research_agent.py
-│   ├── tools/                     # Reusable tools
-│   │   ├── file_tools.py
-│   │   └── research_tools.py
-│   └── main.py                    # Application entry point
-├── docs/                          # Documentation
-│   ├── README.md                  # This file
-│   ├── TUTORIAL.md                # Step-by-step tutorial
-│   └── ARCHITECTURE.md            # Architecture details
-├── examples/                      # Examples
-│   └── add_custom_agent.py        # Custom agent example
-├── requirements.txt               # Dependencies
-├── .env.example                   # Environment template
-└── .gitignore                     # Git ignore rules
+│   │   ├── research_agent.py
+│   │   └── weather_agent.py
+│   ├── api_server.py               # FastAPI backend server
+│   └── main.py                     # CLI entry point
+├── frontend/
+│   └── index.html                  # Web UI (HTML + CSS + JS)
+├── requirements.txt                # Python dependencies
+├── .env                            # Environment variables (create this)
+└── README.md                       # This file
 ```
 
-## 🎓 Learning Resources
+## Available Agents
 
-- **[TUTORIAL.md](TUTORIAL.md)** - Detailed step-by-step guide for building custom agents
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Deep dive into the system architecture
-- **[examples/](../examples/)** - Working code examples
+### 1. File Operations Agent
+Handles file system operations using LangChain tools.
 
-## 🔧 Configuration
+**Capabilities**: Read files, write files, list directories, move files, append to files
 
-### Environment Variables
+### 2. Research Agent
+Performs web searches and information gathering using DuckDuckGo.
 
-- `OPENAI_API_KEY` - Required for LLM operations
-- `TAVILY_API_KEY` - Optional, for enhanced web search
+**Capabilities**: Web search, content summarization, information extraction, topic analysis
 
-### Model Selection
+### 3. Weather Agent
+Provides weather information via MCP server integration (demonstrates external tool usage).
 
-By default, the system uses `gpt-4o`. You can change this in:
-- `src/core/supervisor.py` - For supervisor routing
-- Individual agent files - For agent execution
+**Capabilities**: Dynamically loaded from MCP server (current weather, forecasts, air quality, timezone info, etc.)
 
-## 🛠️ Development
+## Features
 
-### Running Tests
+- ✅ **Intelligent Routing**: Supervisor automatically selects the best agent
+- ✅ **Real-time Streaming**: Responses stream word-by-word to the frontend
+- ✅ **Conversation Memory**: Maintains context across multiple messages
+- ✅ **Markdown Support**: Rich text formatting in responses
+- ✅ **MCP Integration**: Connect to external tool servers
+- ✅ **Modular Design**: Easy to add new agents
+- ✅ **Modern UI**: Clean, responsive web interface with dark mode
+- ✅ **Agent Status**: Visual indicators show which agent is active
 
-```bash
-# Test individual agents
-python -m src.agents.research_agent
+## Tech Stack
 
-# Test the custom agent example
-python examples/add_custom_agent.py
-```
-
-### Debugging
-
-Set `verbose=True` in agent executors to see detailed execution logs.
-
-## 🤝 Contributing
-
-Contributions are welcome! Some ideas:
-
-- Add new agents (Email, Database, API, etc.)
-- Enhance existing tools
-- Improve routing logic
-- Add tests
-- Improve documentation
-
-## 📝 License
-
-This project is for educational purposes. Feel free to use and modify as needed.
-
-## 🙏 Acknowledgments
-
-Built with:
-- [LangChain](https://langchain.com/) - Framework for LLM applications
-- [LangGraph](https://langchain-ai.github.io/langgraph/) - Graph-based workflows
-- [OpenAI](https://openai.com/) - LLM provider
-
-## 📧 Support
-
-For questions or issues:
-1. Check the [TUTORIAL.md](TUTORIAL.md) for detailed guidance
-2. Review [examples/](../examples/) for working code
-3. Consult [ARCHITECTURE.md](ARCHITECTURE.md) for design details
+- **Backend**: FastAPI, LangChain, LangGraph, OpenAI
+- **Frontend**: Vanilla JavaScript, HTML5, CSS3, Marked.js
+- **Streaming**: Plain text streaming (StreamingResponse)
+- **MCP**: Model Context Protocol for external tools
+- **State Management**: LangGraph MemorySaver for conversation history
 
 ---
 
-**Happy agent building! 🤖**
+**Built with LangChain & LangGraph 🤖**
